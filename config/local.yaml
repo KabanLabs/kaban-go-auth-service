@@ -1,0 +1,6 @@
+env: "local" # dev
+access_token_ttl: 1h
+refresh_token_ttl: 2h
+grpc:
+  port: 44044
+  timeout: 10h
