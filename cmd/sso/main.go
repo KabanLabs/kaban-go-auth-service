@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/VACdotCS/kaban-go-auth-service/internal/app"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
 )
 
@@ -15,12 +16,20 @@ const (
 
 func main() {
 	cfg := config.MustLoad()
-	// TODO: logger init
 
 	log := setupLogger(cfg.Env)
 	log.Info("Starting application")
 
 	// TODO: init app
+	application := app.New(
+		log,
+		cfg.GRPC.Port,
+		cfg.PgConfig,
+		cfg.AccessTokenTTL,
+		cfg.RefreshTokenTTL,
+	)
+
+	application.GRPCSrv.MustRun()
 
 	// TODO: run gRPC-server of the app
 }

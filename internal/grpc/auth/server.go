@@ -1,0 +1,30 @@
+package auth
+
+import (
+	"context"
+
+	ssov1 "github.com/VACdotCS/protos/gen/go/sso"
+	"google.golang.org/grpc"
+)
+
+type serverAPI struct {
+	ssov1.UnimplementedAuthServer
+}
+
+func Register(gRPC *grpc.Server) {
+	ssov1.RegisterAuthServer(gRPC, &serverAPI{})
+}
+
+func (s *serverAPI) Login(
+	ctc context.Context,
+	req *ssov1.LoginRequest,
+) (*ssov1.LoginResponse, error) {
+	panic("implement me")
+}
+
+func (s *serverAPI) Register(
+	ctc context.Context,
+	req *ssov1.RegisterRequest,
+) (*ssov1.RegisterResponse, error) {
+	panic("implement me")
+}
