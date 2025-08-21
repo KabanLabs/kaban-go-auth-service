@@ -4,4 +4,14 @@ tasks:
   start:dev:
     desc: "Run local dev version"
     cmds:
-      - go run ./cmd/sso/main.go --config=./config/local.yaml
+      - go run ./cmd/sso --config=./config/local.yaml
+
+  migrate-up:
+    desc: "Up migrations"
+    cmds:
+      - go run ./cmd/migrator --migrations-path=./migrations --type=up
+
+  migrate-down:
+    desc: "Down migrations"
+    cmds:
+      - go run ./cmd/migrator --migrations-path=./migrations --type=down

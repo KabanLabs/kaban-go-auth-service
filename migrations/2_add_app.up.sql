@@ -1,0 +1,2 @@
+INSERT INTO apps (id, title, secret)
+VALUES (1, 'Kaban ', 'cr5h7d6r5p9mrf2t7i2zl0b3y96bcehqfoenb65efep2nn3r712w6y5448ycupeyzw8743xcblk03ygb7h7lb7pnhe98u3334zzmegssob6yc0qvbzr6i06tylxn09uk0lqluf298juu34rspg4r9s8un8c362g3x8gefuy9jrlrugi7jwfpyndmsl238t0o5fdkg1934g1mrork2girglcnqv6zs2q4cabdqbgixds87spu0tc3i28lz6')
