@@ -1,11 +1,15 @@
 package app
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	grpcapp "github.com/VACdotCS/kaban-go-auth-service/internal/app/grpc"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/storage/pg"
 )
 
 type App struct {
@@ -19,11 +23,21 @@ func New(
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
 ) *App {
-	// TODO: init db
 
-	// TODO: init auth service (auth)
+	dbUrl := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s",
+		pgConfig.User,
+		pgConfig.Password,
+		pgConfig.Host,
+		pgConfig.Port,
+		pgConfig.DbName,
+	)
 
-	grpcApp := grpcapp.New(log, grpcPort, pgConfig, accessTokenTTL, refreshTokenTTL)
+	storage := pg.New(context.Background(), dbUrl)
+
+	authService := auth.New(log, storage, storage, storage, accessTokenTTL, refreshTokenTTL)
+
+	grpcApp := grpcapp.New(log, grpcPort, authService)
 
 	return &App{
 		GRPCSrv: grpcApp,
