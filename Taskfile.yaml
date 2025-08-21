@@ -1,0 +1,7 @@
+version: 3
+
+tasks:
+  start:dev:
+    desc: "Run local dev version"
+    cmds:
+      - go run ./cmd/sso/main.go --config=./config/local.yaml

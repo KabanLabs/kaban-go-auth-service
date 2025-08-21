@@ -23,7 +23,7 @@ func New(
 
 	// TODO: init auth service (auth)
 
-	grpcApp := grpcapp.New(log, grpcPort)
+	grpcApp := grpcapp.New(log, grpcPort, pgConfig, accessTokenTTL, refreshTokenTTL)
 
 	return &App{
 		GRPCSrv: grpcApp,

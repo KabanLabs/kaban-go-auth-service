@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: sso_db
+    environment:
+      POSTGRES_USER: sso_user
+      POSTGRES_PASSWORD: sso_db_password
+      POSTGRES_DB: sso
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+volumes:
+  pgdata: {}

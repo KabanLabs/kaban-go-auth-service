@@ -1,11 +1,16 @@
 package grpcapp
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net"
+	"time"
 
+	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
 	authgrpc "github.com/VACdotCS/kaban-go-auth-service/internal/grpc/auth"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/storage/pg"
 	"google.golang.org/grpc"
 )
 
@@ -19,10 +24,30 @@ type App struct {
 func New(
 	log *slog.Logger,
 	port int,
+	pgConfig config.PostgresConfig,
+	accessTokenTTL time.Duration,
+	refreshTokenTTL time.Duration,
 ) *App {
 	gRPCServer := grpc.NewServer()
 
-	authgrpc.Register(gRPCServer)
+	// Create db url from config
+	dbUrl := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s",
+		pgConfig.User,
+		pgConfig.Password,
+		pgConfig.Host,
+		pgConfig.Port,
+		pgConfig.DbName,
+	)
+
+	fmt.Println(dbUrl)
+
+	// TODO: where I should create context?
+	storage := pg.New(context.Background(), dbUrl)
+
+	authService := auth.New(log, storage, storage, storage, accessTokenTTL, refreshTokenTTL)
+
+	authgrpc.Register(gRPCServer, authService)
 
 	return &App{
 		log:        log,
