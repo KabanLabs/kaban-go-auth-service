@@ -39,11 +39,6 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	panic("implement me")
 }
 
-func (s *Storage) UserRole(ctx context.Context, userID string) (models.Role, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s *Storage) App(ctx context.Context, appID string) (models.App, error) {
 	//TODO implement me
 	panic("implement me")
