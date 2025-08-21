@@ -4,29 +4,27 @@ import (
 	"context"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Storage struct {
-	conn *pgx.Conn
+	Pool *pgxpool.Pool
 }
 
 func New(ctx context.Context, dbUrl string) *Storage {
-	config, err := pgx.ParseConfig(dbUrl)
+	config, err := pgxpool.ParseConfig(dbUrl)
 
 	if err != nil {
 		panic(err)
 	}
 
-	config.TLSConfig = nil
-
-	conn, connErr := pgx.ConnectConfig(ctx, config)
+	pool, connErr := pgxpool.NewWithConfig(ctx, config)
 
 	if connErr != nil {
 		panic(connErr)
 	}
 
-	return &Storage{conn: conn}
+	return &Storage{Pool: pool}
 }
 
 func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (uid string, err error) {

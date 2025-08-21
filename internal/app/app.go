@@ -10,10 +10,12 @@ import (
 	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/storage/pg"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type App struct {
 	GRPCSrv *grpcapp.App
+	DBPool  *pgxpool.Pool
 }
 
 func New(
@@ -41,5 +43,6 @@ func New(
 
 	return &App{
 		GRPCSrv: grpcApp,
+		DBPool:  storage.Pool,
 	}
 }
