@@ -2,6 +2,6 @@ package models
 
 type RefreshToken struct {
 	ID     string
-	userID string
-	token  string
+	UserID string
+	Token  string
 }

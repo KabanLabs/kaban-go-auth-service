@@ -35,9 +35,22 @@ func New(
 		pgConfig.DbName,
 	)
 
-	storage := pg.New(context.Background(), dbUrl)
+	storage, err := pg.New(context.Background(), dbUrl)
 
-	authService := auth.New(log, storage, storage, storage, accessTokenTTL, refreshTokenTTL)
+	if err != nil {
+		panic(err)
+	}
+
+	authService := auth.New(
+		log,
+		storage,
+		storage,
+		storage,
+		storage,
+		storage,
+		accessTokenTTL,
+		refreshTokenTTL,
+	)
 
 	grpcApp := grpcapp.New(log, grpcPort, authService)
 

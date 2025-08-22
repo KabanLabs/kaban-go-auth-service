@@ -9,12 +9,14 @@ import (
 )
 
 type Auth struct {
-	log             *slog.Logger
-	userSaver       UserSaver
-	userProvider    UserProvider
-	appProvider     AppProvider
-	accessTokenTTL  time.Duration
-	refreshTokenTTL time.Duration
+	log                  *slog.Logger
+	userSaver            UserSaver
+	userProvider         UserProvider
+	appProvider          AppProvider
+	refreshTokenSaver    RefreshTokenSaver
+	refreshTokenProvider RefreshTokenProvider
+	accessTokenTTL       time.Duration
+	refreshTokenTTL      time.Duration
 }
 
 type UserSaver interface {
@@ -33,22 +35,34 @@ type AppProvider interface {
 	App(ctx context.Context, appID string) (models.App, error)
 }
 
+type RefreshTokenSaver interface {
+	SaveRefreshToken(ctx context.Context, refreshToken string, uid string) (models.RefreshToken, error)
+}
+
+type RefreshTokenProvider interface {
+	RefreshToken(ctx context.Context, refreshToken string) (models.RefreshToken, error)
+}
+
 // New returns new instance of the Auth Service
 func New(
 	log *slog.Logger,
 	userSaver UserSaver,
 	userProvider UserProvider,
 	appProvider AppProvider,
+	refreshTokenSaver RefreshTokenSaver,
+	refreshTokenProvider RefreshTokenProvider,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
 ) *Auth {
 	return &Auth{
-		log:             log,
-		userSaver:       userSaver,
-		userProvider:    userProvider,
-		appProvider:     appProvider,
-		accessTokenTTL:  accessTokenTTL,
-		refreshTokenTTL: refreshTokenTTL,
+		log:                  log,
+		userSaver:            userSaver,
+		userProvider:         userProvider,
+		appProvider:          appProvider,
+		refreshTokenProvider: refreshTokenProvider,
+		refreshTokenSaver:    refreshTokenSaver,
+		accessTokenTTL:       accessTokenTTL,
+		refreshTokenTTL:      refreshTokenTTL,
 	}
 }
 
