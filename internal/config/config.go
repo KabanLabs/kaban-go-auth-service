@@ -15,6 +15,11 @@ type Config struct {
 	RefreshTokenTTL time.Duration  `yaml:"refresh_token_ttl"`
 	PrivateKeyTTL   time.Duration  `yaml:"private_key_ttl"`
 	PgConfig        PostgresConfig `yaml:"pg_config"`
+	Http            HttpConfig     `yaml:"http"`
+}
+
+type HttpConfig struct {
+	Port int `yaml:"port" env-default:"8080"`
 }
 
 type GRPCConfig struct {

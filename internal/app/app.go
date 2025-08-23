@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	httpApp "github.com/VACdotCS/kaban-go-auth-service/internal/app/gateway"
 	grpcapp "github.com/VACdotCS/kaban-go-auth-service/internal/app/grpc"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
@@ -14,13 +15,16 @@ import (
 )
 
 type App struct {
-	GRPCSrv *grpcapp.App
-	DBPool  *pgxpool.Pool
+	GRPCSrv     *grpcapp.App
+	HttpGateway *httpApp.App
+	DBPool      *pgxpool.Pool
 }
 
 func New(
+	ctx context.Context,
 	log *slog.Logger,
 	grpcPort int,
+	httpPort int,
 	pgConfig config.PostgresConfig,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
@@ -53,9 +57,11 @@ func New(
 	)
 
 	grpcApp := grpcapp.New(log, grpcPort, authService)
+	gateway := httpApp.New(ctx, log, httpPort, grpcPort, refreshTokenTTL)
 
 	return &App{
-		GRPCSrv: grpcApp,
-		DBPool:  storage.Pool,
+		GRPCSrv:     grpcApp,
+		DBPool:      storage.Pool,
+		HttpGateway: gateway,
 	}
 }

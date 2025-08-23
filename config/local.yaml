@@ -7,6 +7,9 @@ grpc:
   port: 3000
   timeout: 10h
 
+http:
+  port: 8000
+
 pg_config:
   port: 5432
   user: sso_user

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -54,15 +55,22 @@ func main() {
 
 	log.Info("Rsa key pair loaded")
 
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	application := app.New(
+		ctx,
 		log,
 		cfg.GRPC.Port,
+		cfg.Http.Port,
 		cfg.PgConfig,
 		cfg.AccessTokenTTL,
 		cfg.RefreshTokenTTL,
 	)
 
 	go application.GRPCSrv.MustRun()
+	go application.HttpGateway.Run()
 	go keysRotation(log, cfg.PrivateKeyTTL)
 
 	// Graceful shutdown
