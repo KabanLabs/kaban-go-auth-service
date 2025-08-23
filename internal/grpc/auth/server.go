@@ -150,7 +150,7 @@ func (s *serverAPI) RegenerateRefreshToken(
 
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
-			return nil, status.Error(codes.Unauthenticated, "Wrong email or password")
+			return nil, status.Error(codes.Unauthenticated, "Token is invalid")
 		}
 
 		return nil, status.Error(codes.Internal, "internal error")
