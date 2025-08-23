@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/app"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
@@ -16,6 +17,26 @@ const (
 	envDev   = "envDev"
 	envProd  = "prod"
 )
+
+func keysRotation(log *slog.Logger, ttl time.Duration) {
+	const op = "main.keysRotation"
+
+	logger := log.With(
+		slog.String("op", op),
+	)
+
+	logger.Info("Starting key rotation worker")
+
+	for {
+		_, err := rsa_store.RotateKey(2048, ttl)
+
+		if err != nil {
+			logger.Info("Keys rotated successfully")
+		}
+
+		time.Sleep(time.Minute)
+	}
+}
 
 func main() {
 	cfg := config.MustLoad()
@@ -42,6 +63,7 @@ func main() {
 	)
 
 	go application.GRPCSrv.MustRun()
+	go keysRotation(log, cfg.PrivateKeyTTL)
 
 	// Graceful shutdown
 

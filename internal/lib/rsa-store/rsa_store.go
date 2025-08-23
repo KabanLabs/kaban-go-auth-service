@@ -123,6 +123,10 @@ func RotateKey(bits int, ttl time.Duration) (*Keys, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	if memKeys.Exp < time.Now().Unix() {
+		return nil, errors.New("keys not expired")
+	}
+
 	privKey, err := rsa.GenerateKey(rand.Reader, bits)
 
 	if err != nil {
@@ -212,13 +216,14 @@ func buildJWK(pub *rsa.PublicKey, ttl time.Duration) *models.JWK {
 
 	kidCount++
 	return &models.JWK{
-		Kid: fmt.Sprintf("kid-%d", kidCount),
-		Kty: "RSA",
-		Alg: "RS256",
-		Use: "sig",
-		N:   n,
-		E:   e,
-		Exp: time.Now().Add(ttl).Unix(),
+		Kid:     fmt.Sprintf("kid-%d", kidCount),
+		Kty:     "RSA",
+		Alg:     "RS256",
+		Use:     "sig",
+		N:       n,
+		E:       e,
+		Exp:     time.Now().Add(ttl).Unix(),
+		Created: time.Now().Unix(),
 	}
 }
 
