@@ -68,7 +68,7 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	return user, nil
 }
 
-func (s *Storage) App(ctx context.Context, appID string) (models.App, error) {
+func (s *Storage) App(ctx context.Context, appID int) (models.App, error) {
 	const op = "storage.pg.App"
 	var app models.App
 

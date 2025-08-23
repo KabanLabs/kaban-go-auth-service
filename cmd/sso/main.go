@@ -8,6 +8,7 @@ import (
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/app"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/config"
+	rsa_store "github.com/VACdotCS/kaban-go-auth-service/internal/lib/rsa-store"
 )
 
 const (
@@ -21,6 +22,14 @@ func main() {
 
 	log := setupLogger(cfg.Env)
 	log.Info("Starting application")
+
+	log.Info("Loading rsa key pair...")
+	_, err := rsa_store.LoadOrGenerateKeys(2048, cfg.PrivateKeyTTL)
+
+	if err != nil {
+		log.Error("Failed to load rsa key pair", "error", err)
+		panic(err)
+	}
 
 	application := app.New(
 		log,

@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"errors"
 
+	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
 	ssov1 "github.com/VACdotCS/protos/gen/go/sso"
 	"google.golang.org/grpc"
@@ -20,10 +22,11 @@ type Auth interface {
 		email string,
 		password string,
 	) (userID string, err error)
+	GetJWK(ctx context.Context, kid string) (key *models.JWK, err error)
 	ValidateAccessToken(ctx context.Context,
 		accessToken string,
 	) (isValid bool, err error)
-	RegenerateAccessToken(ctx context.Context,
+	RegenerateRefreshToken(ctx context.Context,
 		refreshToken string,
 	) (accessToken string, err error)
 }
@@ -55,6 +58,9 @@ func (s *serverAPI) Login(
 	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 
 	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return nil, status.Error(codes.NotFound, "Wrong email or password")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -99,12 +105,19 @@ func (s *serverAPI) ValidateToken(
 	}, nil
 }
 
-func (s *serverAPI) RegenerateAccessToken(
+func (s *serverAPI) GetJWKs(
+	ctx context.Context,
+	req *ssov1.GetJWKSRequest,
+) (*ssov1.JWKS, error) {
+	panic("implement me")
+}
+
+func (s *serverAPI) RegenerateRefreshToken(
 	ctx context.Context,
 	req *ssov1.RegenerateAccessTokenRequest,
 ) (*ssov1.RegenerateAccessTokenResponse, error) {
 	//TODO: add validator for JWT string
-	accessToken, err := s.auth.RegenerateAccessToken(ctx, req.GetRefreshToken())
+	accessToken, err := s.auth.RegenerateRefreshToken(ctx, req.GetRefreshToken())
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")

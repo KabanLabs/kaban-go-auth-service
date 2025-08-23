@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/lib/rsa-store"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -16,6 +17,7 @@ func NewAccessToken(user models.User, app models.App, duration time.Duration) (s
 	claims["exp"] = time.Now().Add(duration).Unix()
 	claims["iat"] = time.Now().Unix()
 	claims["app_id"] = app.ID
+	claims["kid"] = rsa_store.GetLastKeyId()
 
 	// TODO: pass RSA private key here
 	tokenString, err := token.SignedString("")
