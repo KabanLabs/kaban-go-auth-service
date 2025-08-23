@@ -17,7 +17,8 @@ func NewAccessToken(user models.User, app models.App, duration time.Duration) (s
 	claims["iat"] = time.Now().Unix()
 	claims["app_id"] = app.ID
 
-	tokenString, err := token.SignedString(app.Secret)
+	// TODO: pass RSA private key here
+	tokenString, err := token.SignedString("")
 
 	if err != nil {
 		return "", err

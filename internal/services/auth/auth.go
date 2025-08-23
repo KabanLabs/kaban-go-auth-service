@@ -36,7 +36,7 @@ type AppProvider interface {
 }
 
 type RefreshTokenSaver interface {
-	SaveRefreshToken(ctx context.Context, refreshToken string, uid string) (models.RefreshToken, error)
+	SaveRefreshToken(ctx context.Context, refreshToken string, uid string, expiresAt time.Time, appId int) (models.RefreshToken, error)
 }
 
 type RefreshTokenProvider interface {
@@ -84,6 +84,7 @@ func (s *Auth) RegisterNewUser(ctx context.Context,
 func (s *Auth) ValidateAccessToken(ctx context.Context,
 	accessToken string,
 ) (isValid bool, err error) {
+	//_ := jwt.ValidateTokenWithClaims(accessToken)
 	panic("implement me")
 }
 

@@ -13,12 +13,16 @@ CREATE TABLE apps
 (
     id     INTEGER PRIMARY KEY,
     title   TEXT NOT NULL UNIQUE,
-    secret TEXT NOT NULL UNIQUE
+    scopes TEXT
 );
 
 CREATE TABLE users_tokens
 (
     id INTEGER PRIMARY KEY,
-    refresh_token TEXT NOT NULL,
-    user_id UUID REFERENCES users(id)
+    token TEXT NOT NULL,
+    app_id INTEGER NOT NULL REFERENCES apps(id),
+    user_id UUID NOT NULL REFERENCES users(id),
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT now(),
+    rotated BOOLEAN DEFAULT FALSE
 );

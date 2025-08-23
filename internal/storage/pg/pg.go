@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/storage"
@@ -72,8 +73,8 @@ func (s *Storage) App(ctx context.Context, appID string) (models.App, error) {
 	var app models.App
 
 	err := s.Pool.QueryRow(ctx,
-		"SELECT id, name, secret FROM users WHERE id = $1",
-		appID).Scan(&app.ID, &app.Name, &app.Secret)
+		"SELECT id, name, scopes FROM users WHERE id = $1",
+		appID).Scan(&app.ID, &app.Name, &app.Scopes)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -89,11 +90,31 @@ func (s *Storage) RefreshToken(ctx context.Context, refreshToken string) (models
 	const op = "storage.pg.RefreshToken"
 	var token models.RefreshToken
 
-	err := s.Pool.QueryRow(ctx,
-		"SELECT id, user_id, refresh_token FROM users_tokens WHERE refresh_token =$1",
-		refreshToken).Scan(&token.ID, &token.UserID, &token.Token)
+	q := `
+	SELECT 
+		id, 
+		token, 
+		app_id, 
+		user_id, 
+		expires_at, 
+		rotated, 
+		created_at 
+	FROM users_tokens 
+	WHERE refresh_token =$1 AND rotated = false`
+
+	err := s.Pool.QueryRow(ctx, q, refreshToken).
+		Scan(
+			&token.ID,
+			&token.Token,
+			&token.AppID,
+			&token.UserID,
+			&token.ExpireAt,
+			&token.Rotated,
+			&token.CreatedAt,
+		)
 
 	if err != nil {
+		// TODO: Add another error if key was rotated
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.RefreshToken{}, fmt.Errorf("%s: %w", op, storage.ErrRefreshTokenNotFound)
 		}
@@ -103,19 +124,49 @@ func (s *Storage) RefreshToken(ctx context.Context, refreshToken string) (models
 	return token, nil
 }
 
-func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid string) (models.RefreshToken, error) {
+func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid string, expAt time.Time, appId int) (models.RefreshToken, error) {
 	const op = "storage.pg.SaveRefreshToken"
 	var token models.RefreshToken
 
-	err := s.Pool.QueryRow(ctx,
-		"INSERT INTO users_tokens (user_id, refresh_token) VALUES ($1, $2) RETURNING id",
-		uid, refreshToken).Scan(&token.ID)
-
+	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return models.RefreshToken{}, fmt.Errorf("%s: %w", op, storage.ErrAppNotFound)
-		}
-		return models.RefreshToken{}, fmt.Errorf("%s: %w", op, err)
+		return token, fmt.Errorf("%s: begin tx failed: %w", op, err)
+	}
+	defer tx.Rollback(ctx)
+
+	rotateLastTokenQuery := `
+		WITH last_token AS (
+			SELECT id FROM users_tokens
+			WHERE user_id = $1
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		UPDATE users_tokens
+		SET rotated = true
+		WHERE id = (SELECT id FROM last_token)
+	`
+	cmdTag, err := tx.Exec(ctx, rotateLastTokenQuery, uid)
+	if err != nil {
+		return token, fmt.Errorf("%s: failed to rotate last token: %w", op, err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		//
+	}
+
+	insertQuery := `
+		INSERT INTO users_tokens (user_id, token, app_id, expires_at)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+	err = tx.QueryRow(ctx, insertQuery, uid, refreshToken, appId, expAt).Scan(&token.ID)
+	if err != nil {
+		return token, fmt.Errorf("%s: failed to insert new token: %w", op, err)
+	}
+
+	// Коммитим транзакцию
+	if err := tx.Commit(ctx); err != nil {
+		return token, fmt.Errorf("%s: commit failed: %w", op, err)
 	}
 
 	token.UserID = uid
