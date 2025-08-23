@@ -41,6 +41,7 @@ type UserSaver interface {
 
 type UserProvider interface {
 	User(ctx context.Context, email string) (models.User, error)
+	UserById(ctx context.Context, uid string) (models.User, error)
 }
 
 type AppProvider interface {
@@ -113,6 +114,7 @@ func (s *Auth) Login(ctx context.Context,
 	app, err := s.appProvider.App(ctx, appID)
 
 	if err != nil {
+		log.Error("failed to get app", "error", err)
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -211,6 +213,8 @@ func (s *Auth) GetJWK(kid string) (key *models.JWK, err error) {
 		slog.String("op", op),
 	)
 
+	log.Info(fmt.Sprintf("Getting public key with kid = %s", kid))
+
 	key, err = rsa_store.GetJWKByKid(kid)
 
 	if err != nil {
@@ -251,7 +255,7 @@ func (s *Auth) RegenerateRefreshToken(
 		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	user, err := s.userProvider.User(ctx, storedRefresh.UserID)
+	user, err := s.userProvider.UserById(ctx, storedRefresh.UserID)
 	if err != nil {
 		log.Error("failed to get user", "error", err)
 		return "", "", fmt.Errorf("%s: %w", op, err)

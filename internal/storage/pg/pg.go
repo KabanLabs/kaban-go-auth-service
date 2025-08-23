@@ -56,7 +56,25 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 
 	err := s.Pool.QueryRow(ctx,
 		"SELECT id, email, pass_hash, created_at, updated_at FROM users WHERE email = $1",
-		email).Scan(&user.ID, &user.Email, &user.Created, &user.Updated)
+		email).Scan(&user.ID, &user.Email, &user.PassHash, &user.Created, &user.Updated)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
+		}
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user, nil
+}
+
+func (s *Storage) UserById(ctx context.Context, uid string) (models.User, error) {
+	const op = "storage.pg.UserById"
+	var user models.User
+
+	err := s.Pool.QueryRow(ctx,
+		"SELECT id, email, pass_hash, created_at, updated_at FROM users WHERE id = $1",
+		uid).Scan(&user.ID, &user.Email, &user.PassHash, &user.Created, &user.Updated)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -73,7 +91,7 @@ func (s *Storage) App(ctx context.Context, appID int) (models.App, error) {
 	var app models.App
 
 	err := s.Pool.QueryRow(ctx,
-		"SELECT id, name, scopes FROM users WHERE id = $1",
+		"SELECT id, title, scopes FROM apps WHERE id = $1",
 		appID).Scan(&app.ID, &app.Name, &app.Scopes)
 
 	if err != nil {
@@ -100,7 +118,7 @@ func (s *Storage) RefreshToken(ctx context.Context, refreshToken string) (models
 		rotated, 
 		created_at 
 	FROM users_tokens 
-	WHERE refresh_token =$1 AND rotated = false`
+	WHERE token =$1 AND rotated = false`
 
 	err := s.Pool.QueryRow(ctx, q, refreshToken).
 		Scan(
@@ -164,7 +182,6 @@ func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid
 		return token, fmt.Errorf("%s: failed to insert new token: %w", op, err)
 	}
 
-	// Коммитим транзакцию
 	if err := tx.Commit(ctx); err != nil {
 		return token, fmt.Errorf("%s: commit failed: %w", op, err)
 	}

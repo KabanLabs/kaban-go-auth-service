@@ -31,6 +31,8 @@ func main() {
 		panic(err)
 	}
 
+	log.Info("Rsa key pair loaded")
+
 	application := app.New(
 		log,
 		cfg.GRPC.Port,

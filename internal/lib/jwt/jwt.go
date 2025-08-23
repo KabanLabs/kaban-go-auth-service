@@ -42,7 +42,7 @@ func CheckToken(tokenString string) (bool, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
-		kid, ok := token.Header["kid"].(string)
+		kid, ok := token.Claims.(jwt.MapClaims)["kid"].(string)
 		if !ok {
 			return nil, fmt.Errorf("kid not found in token header")
 		}

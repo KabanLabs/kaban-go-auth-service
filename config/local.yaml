@@ -1,5 +1,5 @@
 env: "local" # dev
-access_token_ttl: 1h
+access_token_ttl: 10s
 refresh_token_ttl: 2h
 private_key_ttl: 1440h
 

@@ -7,6 +7,7 @@ import (
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
 	ssov1 "github.com/VACdotCS/protos/gen/go/sso"
+	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -81,6 +82,9 @@ func (s *serverAPI) Register(
 	userID, err := s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
 
 	if err != nil {
+		if errors.Is(err, auth.ErrEmailAlreadyExists) {
+			return nil, status.Error(codes.AlreadyExists, "Email already exists")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -97,6 +101,11 @@ func (s *serverAPI) ValidateToken(
 	isValid, err := s.auth.ValidateAccessToken(req.GetAccessToken())
 
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return &ssov1.ValidateTokenResponse{
+				Valid: false,
+			}, nil
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -105,11 +114,38 @@ func (s *serverAPI) ValidateToken(
 	}, nil
 }
 
-func (s *serverAPI) GetJWKs(
+func (s *serverAPI) GetJWKS(
 	ctx context.Context,
 	req *ssov1.GetJWKSRequest,
 ) (*ssov1.JWKS, error) {
-	panic("implement me")
+	jwk, err := s.auth.GetJWK(req.GetKid())
+
+	if err != nil {
+		if errors.Is(err, auth.ErrPublicKeyNotFound) {
+			return nil, status.Error(codes.NotFound, "JWK not found")
+		}
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	res := []ssov1.JWK{
+		{
+			Kid: jwk.Kid,
+			Kty: jwk.Kty,
+			Alg: jwk.Alg,
+			Use: jwk.Use,
+			N:   jwk.N,
+			E:   jwk.E,
+		},
+	}
+
+	keys := make([]*ssov1.JWK, len(res))
+	for i := range res {
+		keys[i] = &res[i]
+	}
+
+	return &ssov1.JWKS{
+		Keys: keys,
+	}, nil
 }
 
 func (s *serverAPI) RegenerateRefreshToken(
@@ -120,6 +156,10 @@ func (s *serverAPI) RegenerateRefreshToken(
 	accessToken, refreshToken, err := s.auth.RegenerateRefreshToken(ctx, req.GetRefreshToken())
 
 	if err != nil {
+		if errors.Is(err, auth.ErrInvalidCredentials) {
+			return nil, status.Error(codes.Unauthenticated, "Wrong email or password")
+		}
+
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 

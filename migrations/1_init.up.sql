@@ -11,14 +11,14 @@ CREATE TABLE users
 
 CREATE TABLE apps
 (
-    id     INTEGER PRIMARY KEY,
+    id     SERIAL PRIMARY KEY,
     title   TEXT NOT NULL UNIQUE,
     scopes TEXT
 );
 
 CREATE TABLE users_tokens
 (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     token TEXT NOT NULL,
     app_id INTEGER NOT NULL REFERENCES apps(id),
     user_id UUID NOT NULL REFERENCES users(id),
