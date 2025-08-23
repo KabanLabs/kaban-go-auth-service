@@ -136,6 +136,13 @@ func (s *Auth) Login(ctx context.Context,
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	_, err = s.refreshTokenSaver.SaveRefreshToken(ctx, refreshToken, user.ID, time.Now().Add(s.refreshTokenTTL), appID)
+
+	if err != nil {
+		log.Error("failed to save refresh token", err)
+		return TokenData{}, fmt.Errorf("%s: %w", op, err)
+	}
+
 	return TokenData{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
