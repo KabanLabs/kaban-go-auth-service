@@ -22,13 +22,13 @@ type Auth interface {
 		email string,
 		password string,
 	) (userID string, err error)
-	GetJWK(ctx context.Context, kid string) (key *models.JWK, err error)
-	ValidateAccessToken(ctx context.Context,
-		accessToken string,
-	) (isValid bool, err error)
-	RegenerateRefreshToken(ctx context.Context,
-		refreshToken string,
-	) (accessToken string, err error)
+	GetJWK(kid string) (key *models.JWK, err error)
+	ValidateAccessToken(accessToken string) (isValid bool, err error)
+	RegenerateRefreshToken(ctx context.Context, refreshToken string) (
+		accessToken,
+		newRefreshToken string,
+		err error,
+	)
 }
 
 type serverAPI struct {
@@ -94,7 +94,7 @@ func (s *serverAPI) ValidateToken(
 	req *ssov1.ValidateTokenRequest,
 ) (*ssov1.ValidateTokenResponse, error) {
 	//TODO: add validator for JWT string
-	isValid, err := s.auth.ValidateAccessToken(ctx, req.GetAccessToken())
+	isValid, err := s.auth.ValidateAccessToken(req.GetAccessToken())
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
@@ -114,17 +114,18 @@ func (s *serverAPI) GetJWKs(
 
 func (s *serverAPI) RegenerateRefreshToken(
 	ctx context.Context,
-	req *ssov1.RegenerateAccessTokenRequest,
-) (*ssov1.RegenerateAccessTokenResponse, error) {
+	req *ssov1.RegenerateRefreshTokenRequest,
+) (*ssov1.RegenerateRefreshTokenResponse, error) {
 	//TODO: add validator for JWT string
-	accessToken, err := s.auth.RegenerateRefreshToken(ctx, req.GetRefreshToken())
+	accessToken, refreshToken, err := s.auth.RegenerateRefreshToken(ctx, req.GetRefreshToken())
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	return &ssov1.RegenerateAccessTokenResponse{
-		AccessToken: accessToken,
+	return &ssov1.RegenerateRefreshTokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }
 

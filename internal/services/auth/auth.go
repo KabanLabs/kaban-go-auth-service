@@ -17,6 +17,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrPublicKeyNotFound  = errors.New("public key not found")
+	ErrEmailAlreadyExists = errors.New("email already exists")
 )
 
 type Auth struct {
@@ -95,7 +96,7 @@ func (s *Auth) Login(ctx context.Context,
 
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			return TokenData{}, fmt.Errorf("%s: %w", op, storage.ErrUserNotFound)
+			return TokenData{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
 
 		log.Error("failed to get user", "error", err)
@@ -117,7 +118,9 @@ func (s *Auth) Login(ctx context.Context,
 
 	log.Info("successfully logged in")
 
-	accessToken, err := jwt.NewAccessToken(user, app, s.accessTokenTTL)
+	privateKey := rsa_store.GetPrivateKey()
+
+	accessToken, err := jwt.NewAccessToken(user, app, s.accessTokenTTL, &privateKey)
 
 	if err != nil {
 		log.Error("failed to generate access token", err)
@@ -125,7 +128,7 @@ func (s *Auth) Login(ctx context.Context,
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	refreshToken, err := jwt.NewRefreshToken(user, app, s.refreshTokenTTL)
+	refreshToken, err := jwt.NewRefreshToken(user, app, s.refreshTokenTTL, &privateKey)
 
 	if err != nil {
 		log.Error("failed to generate refresh token", err)
@@ -165,34 +168,124 @@ func (s *Auth) RegisterNewUser(ctx context.Context,
 	if err != nil {
 		log.Error("failed to save user", err)
 
+		if errors.Is(err, storage.ErrUserExists) {
+			return "", fmt.Errorf("%s: %w", op, ErrEmailAlreadyExists)
+		}
+
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	return userID, nil
 }
 
-func (s *Auth) ValidateAccessToken(ctx context.Context,
-	accessToken string,
-) (isValid bool, err error) {
-	panic("implement me")
+func (s *Auth) ValidateAccessToken(accessToken string) (isValid bool, err error) {
+	const op = "Auth.ValidateAccessToken"
+
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	log.Info("attempting to validate access token")
+
+	valid, err := jwt.CheckToken(accessToken)
+
+	if err != nil {
+		log.Error("failed to validate access token", err)
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return valid, nil
 }
 
-func (s *Auth) GetJWK(ctx context.Context,
-	kid string,
-) (key *models.JWK, err error) {
+func (s *Auth) GetJWK(kid string) (key *models.JWK, err error) {
+	const op = "Auth.GetJWK"
+
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
 	key, err = rsa_store.GetJWKByKid(kid)
 
 	if err != nil {
-		return nil, err
+		log.Error("failed to get jwk", ErrPublicKeyNotFound)
+		return nil, fmt.Errorf("%s: %w", op, ErrPublicKeyNotFound)
 	}
 
 	return key, nil
 }
 
-func (s *Auth) RegenerateRefreshToken(ctx context.Context,
+func (s *Auth) RegenerateRefreshToken(
+	ctx context.Context,
 	refreshToken string,
-) (accessToken string, err error) {
-	panic("implement me")
+) (string, string, error) {
+	const op = "Auth.RegenerateRefreshToken"
+
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
+	log.Info("attempting to regenerate tokens")
+
+	valid, err := jwt.CheckToken(refreshToken)
+
+	if err != nil || !valid {
+		log.Error("invalid refresh token", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+	}
+
+	storedRefresh, err := s.refreshTokenProvider.RefreshToken(ctx, refreshToken)
+	if err != nil {
+		log.Error("refresh token not found", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+	}
+
+	if time.Now().After(storedRefresh.ExpireAt) {
+		log.Error("refresh token expired")
+		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+	}
+
+	user, err := s.userProvider.User(ctx, storedRefresh.UserID)
+	if err != nil {
+		log.Error("failed to get user", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	app, err := s.appProvider.App(ctx, storedRefresh.AppID)
+	if err != nil {
+		log.Error("failed to get app", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	privateKey := rsa_store.GetPrivateKey()
+
+	newAccessToken, err := jwt.NewAccessToken(user, app, s.accessTokenTTL, &privateKey)
+
+	if err != nil {
+		log.Error("failed to generate access token", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	newRefreshToken, err := jwt.NewRefreshToken(user, app, s.refreshTokenTTL, &privateKey)
+
+	if err != nil {
+		log.Error("failed to generate refresh token", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = s.refreshTokenSaver.SaveRefreshToken(
+		ctx,
+		newRefreshToken,
+		user.ID,
+		time.Now().Add(s.refreshTokenTTL),
+		app.ID,
+	)
+
+	if err != nil {
+		log.Error("failed to save refresh token", "error", err)
+		return "", "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return newAccessToken, newRefreshToken, nil
 }
 
 type TokenData struct {

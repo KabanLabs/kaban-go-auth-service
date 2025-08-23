@@ -13,6 +13,10 @@ github.com/VACdotCS/protos v0.0.4 h1:jsVGfhjbJTKiK2gV0VxBHVLG5lcMtazQAdFKYz+Yw0U
 github.com/VACdotCS/protos v0.0.4/go.mod h1:GPniTwqLMNUqzG3OGpi7QZC9AP5KE2dL1MH8Wc+Aupg=
 github.com/VACdotCS/protos v0.0.6 h1:sBmc26OBb3/ik7IvNu3+GZVw5p4L/ELPQcNgOKJMeSQ=
 github.com/VACdotCS/protos v0.0.6/go.mod h1:GPniTwqLMNUqzG3OGpi7QZC9AP5KE2dL1MH8Wc+Aupg=
+github.com/VACdotCS/protos v0.0.7 h1:x6nVdWMC7kJUdYeLuZRPUi2Dy8GCHt8n1TxP70ZGGZA=
+github.com/VACdotCS/protos v0.0.7/go.mod h1:GPniTwqLMNUqzG3OGpi7QZC9AP5KE2dL1MH8Wc+Aupg=
+github.com/VACdotCS/protos v0.0.8 h1:TuBOfErSUW/hjgBF5eD5PFC6heZATYEVc5up5zEq6pM=
+github.com/VACdotCS/protos v0.0.8/go.mod h1:GPniTwqLMNUqzG3OGpi7QZC9AP5KE2dL1MH8Wc+Aupg=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

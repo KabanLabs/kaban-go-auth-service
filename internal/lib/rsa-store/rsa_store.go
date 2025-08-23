@@ -257,3 +257,15 @@ func loadJWKSFromDisk() error {
 
 	return nil
 }
+
+func GetPrivateKey() rsa.PrivateKey {
+	mu.Lock()
+	defer mu.Unlock()
+	return *memKeys.PrivateKey
+}
+
+func GetPublicKey() rsa.PublicKey {
+	mu.Lock()
+	defer mu.Unlock()
+	return *memKeys.PublicKey
+}
