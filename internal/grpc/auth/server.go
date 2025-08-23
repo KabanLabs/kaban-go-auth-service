@@ -119,7 +119,6 @@ func (s *serverAPI) GetJWKS(
 	req *ssov1.GetJWKSRequest,
 ) (*ssov1.JWKS, error) {
 	jwk, err := s.auth.GetJWK(req.GetKid())
-
 	if err != nil {
 		if errors.Is(err, auth.ErrPublicKeyNotFound) {
 			return nil, status.Error(codes.NotFound, "JWK not found")
@@ -127,24 +126,18 @@ func (s *serverAPI) GetJWKS(
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	res := []ssov1.JWK{
-		{
-			Kid: jwk.Kid,
-			Kty: jwk.Kty,
-			Alg: jwk.Alg,
-			Use: jwk.Use,
-			N:   jwk.N,
-			E:   jwk.E,
-		},
-	}
-
-	keys := make([]*ssov1.JWK, len(res))
-	for i := range res {
-		keys[i] = &res[i]
+	pbJWK := &ssov1.JWK{
+		Kid: jwk.Kid,
+		Kty: jwk.Kty,
+		Alg: jwk.Alg,
+		Use: jwk.Use,
+		N:   jwk.N,
+		E:   jwk.E,
+		Exp: jwk.Exp,
 	}
 
 	return &ssov1.JWKS{
-		Keys: keys,
+		Keys: []*ssov1.JWK{pbJWK},
 	}, nil
 }
 

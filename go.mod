@@ -3,7 +3,7 @@ module github.com/VACdotCS/kaban-go-auth-service
 go 1.25.0
 
 require (
-	github.com/VACdotCS/protos v0.0.8
+	github.com/VACdotCS/protos v0.0.9
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/ilyakaznacheev/cleanenv v1.5.0
