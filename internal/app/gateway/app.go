@@ -24,18 +24,82 @@ type App struct {
 
 type responseWriterWrapper struct {
 	http.ResponseWriter
-	body   bytes.Buffer
-	status int
+	status      int
+	body        *bytes.Buffer
+	wroteHeader bool
+	captured    bool
 }
 
-func (rw *responseWriterWrapper) WriteHeader(status int) {
-	rw.status = status
-	rw.ResponseWriter.WriteHeader(status)
+func (rw *responseWriterWrapper) WriteHeader(code int) {
+	if !rw.wroteHeader {
+		rw.status = code
+		rw.wroteHeader = true
+	}
 }
 
 func (rw *responseWriterWrapper) Write(b []byte) (int, error) {
+	if !rw.wroteHeader {
+		rw.WriteHeader(http.StatusOK)
+	}
+
 	rw.body.Write(b)
-	return rw.ResponseWriter.Write(b)
+
+	return len(b), nil
+}
+
+func cookieMiddleware(next http.Handler, refreshTokenTTL time.Duration) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login" || r.URL.Path == "/refresh" {
+			rw := &responseWriterWrapper{
+				ResponseWriter: w,
+				body:           &bytes.Buffer{},
+				status:         http.StatusOK,
+			}
+
+			next.ServeHTTP(rw, r)
+
+			if rw.status >= 200 && rw.status < 300 {
+				var resp map[string]interface{}
+
+				bodyBytes := rw.body.Bytes()
+				if err := json.Unmarshal(bodyBytes, &resp); err == nil {
+					if refreshToken, exists := resp["refreshToken"].(string); exists && refreshToken != "" {
+						http.SetCookie(w, &http.Cookie{
+							Name:     "refreshToken",
+							Value:    refreshToken,
+							HttpOnly: true,
+							Path:     "/",
+							MaxAge:   int(refreshTokenTTL.Seconds()),
+							Secure:   true,
+							SameSite: http.SameSiteLaxMode,
+						})
+
+						delete(resp, "refreshToken")
+
+						w.Header().Set("Content-Type", "application/json")
+						if rw.wroteHeader {
+							w.WriteHeader(rw.status)
+						}
+						json.NewEncoder(w).Encode(resp)
+						return
+					}
+				}
+			}
+
+			if rw.wroteHeader {
+				w.WriteHeader(rw.status)
+			}
+
+			_, err := w.Write(rw.body.Bytes())
+
+			if err != nil {
+				return
+			}
+
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
 }
 
 func New(
@@ -53,33 +117,7 @@ func New(
 		panic(err)
 	}
 
-	cookieMiddleware := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := &responseWriterWrapper{ResponseWriter: w}
-
-		mux.ServeHTTP(rw, r)
-
-		if (r.URL.Path == "/login" || r.URL.Path == "/refresh") && rw.status >= 200 && rw.status < 300 {
-			var resp struct {
-				RefreshToken string `json:"refresh_token"`
-			}
-
-			if err := json.Unmarshal(rw.body.Bytes(), &resp); err == nil && resp.RefreshToken != "" {
-				http.SetCookie(rw, &http.Cookie{
-					Name:     "refresh_token",
-					Value:    resp.RefreshToken,
-					HttpOnly: true,
-					Path:     "/",
-					MaxAge:   int(refreshTokenTTL.Seconds()),
-					Secure:   true,
-					SameSite: http.SameSiteLaxMode,
-				})
-
-				resp.RefreshToken = ""
-				rw.body.Reset()
-				_ = json.NewEncoder(rw).Encode(resp)
-			}
-		}
-	})
+	cookieMiddleware := cookieMiddleware(mux, refreshTokenTTL)
 
 	return &App{
 		server:  mux,
