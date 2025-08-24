@@ -27,7 +27,13 @@ func New(ctx context.Context, dbUrl string) (*Storage, error) {
 	pool, connErr := pgxpool.NewWithConfig(ctx, config)
 
 	if connErr != nil {
-		panic(connErr)
+		return nil, err
+	}
+
+	err = pool.Ping(ctx)
+
+	if err != nil {
+		return nil, err
 	}
 
 	return &Storage{Pool: pool}, nil
