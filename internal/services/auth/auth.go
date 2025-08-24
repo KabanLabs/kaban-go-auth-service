@@ -118,8 +118,6 @@ func (s *Auth) Login(ctx context.Context,
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info("successfully logged in")
-
 	privateKey := rsa_store.GetPrivateKey()
 
 	accessToken, err := jwt.NewAccessToken(user, app, s.accessTokenTTL, &privateKey)

@@ -24,46 +24,60 @@ type App struct {
 
 type responseWriterWrapper struct {
 	http.ResponseWriter
-	status      int
-	body        *bytes.Buffer
-	wroteHeader bool
-	captured    bool
+	status int
+	body   *bytes.Buffer
+	header http.Header
+}
+
+func newResponseWriterWrapper(w http.ResponseWriter) *responseWriterWrapper {
+	return &responseWriterWrapper{
+		ResponseWriter: w,
+		status:         0,
+		body:           &bytes.Buffer{},
+		header:         make(http.Header),
+	}
+}
+
+func (rw *responseWriterWrapper) Header() http.Header {
+	return rw.header
 }
 
 func (rw *responseWriterWrapper) WriteHeader(code int) {
-	if !rw.wroteHeader {
+	if rw.status == 0 { // только один раз
 		rw.status = code
-		rw.wroteHeader = true
 	}
 }
 
 func (rw *responseWriterWrapper) Write(b []byte) (int, error) {
-	if !rw.wroteHeader {
-		rw.WriteHeader(http.StatusOK)
+	if rw.status == 0 {
+		rw.status = http.StatusOK // как в стандартной lib
 	}
-
-	rw.body.Write(b)
-
-	return len(b), nil
+	return rw.body.Write(b)
 }
 
 func cookieMiddleware(next http.Handler, refreshTokenTTL time.Duration) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/login" || r.URL.Path == "/refresh" {
-			rw := &responseWriterWrapper{
-				ResponseWriter: w,
-				body:           &bytes.Buffer{},
-				status:         http.StatusOK,
-			}
+			rw := newResponseWriterWrapper(w)
 
 			next.ServeHTTP(rw, r)
 
+			if rw.status == 0 {
+				rw.status = http.StatusOK
+			}
+
+			for k, v := range rw.header {
+				for _, vv := range v {
+					w.Header().Add(k, vv)
+				}
+			}
+
 			if rw.status >= 200 && rw.status < 300 {
 				var resp map[string]interface{}
-
 				bodyBytes := rw.body.Bytes()
+
 				if err := json.Unmarshal(bodyBytes, &resp); err == nil {
-					if refreshToken, exists := resp["refreshToken"].(string); exists && refreshToken != "" {
+					if refreshToken, ok := resp["refreshToken"].(string); ok && refreshToken != "" {
 						http.SetCookie(w, &http.Cookie{
 							Name:     "refreshToken",
 							Value:    refreshToken,
@@ -77,28 +91,20 @@ func cookieMiddleware(next http.Handler, refreshTokenTTL time.Duration) http.Han
 						delete(resp, "refreshToken")
 
 						w.Header().Set("Content-Type", "application/json")
-						if rw.wroteHeader {
-							w.WriteHeader(rw.status)
-						}
-						json.NewEncoder(w).Encode(resp)
+						w.WriteHeader(rw.status)
+						_ = json.NewEncoder(w).Encode(resp)
 						return
 					}
 				}
 			}
 
-			if rw.wroteHeader {
-				w.WriteHeader(rw.status)
-			}
-
-			_, err := w.Write(rw.body.Bytes())
-
-			if err != nil {
-				return
-			}
-
-		} else {
-			next.ServeHTTP(w, r)
+			w.WriteHeader(rw.status)
+			_, _ = w.Write(rw.body.Bytes())
+			return
 		}
+
+		// остальные запросы без обёртки
+		next.ServeHTTP(w, r)
 	})
 }
 
