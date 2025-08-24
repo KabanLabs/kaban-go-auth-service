@@ -43,14 +43,14 @@ func (rw *responseWriterWrapper) Header() http.Header {
 }
 
 func (rw *responseWriterWrapper) WriteHeader(code int) {
-	if rw.status == 0 { // только один раз
+	if rw.status == 0 {
 		rw.status = code
 	}
 }
 
 func (rw *responseWriterWrapper) Write(b []byte) (int, error) {
 	if rw.status == 0 {
-		rw.status = http.StatusOK // как в стандартной lib
+		rw.status = http.StatusOK
 	}
 	return rw.body.Write(b)
 }
