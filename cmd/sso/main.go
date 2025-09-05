@@ -31,7 +31,7 @@ func keysRotation(log *slog.Logger, ttl time.Duration) {
 	for {
 		_, err := rsa_store.RotateKey(2048, ttl)
 
-		if err != nil {
+		if err == nil {
 			logger.Info("Keys rotated successfully")
 		}
 

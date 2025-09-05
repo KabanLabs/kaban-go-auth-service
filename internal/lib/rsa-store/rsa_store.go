@@ -34,7 +34,7 @@ type Keys struct {
 var (
 	memKeys  *Keys
 	memJWKS  = make(map[string]*models.JWK)
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	kidCount int
 )
 
@@ -44,8 +44,8 @@ func LoadOrGenerateKeys(bits int, ttl time.Duration) (*Keys, error) {
 		ttl = defaultKeyTTL
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	if memKeys != nil {
 		return memKeys, nil
@@ -120,12 +120,17 @@ func RotateKey(bits int, ttl time.Duration) (*Keys, error) {
 		ttl = defaultKeyTTL
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
 
-	if memKeys.Exp < time.Now().Unix() {
+	if memKeys.Exp > time.Now().Unix() {
+		mu.RUnlock()
 		return nil, errors.New("keys not expired")
 	}
+
+	mu.RUnlock()
+
+	mu.Lock()
+	defer mu.Unlock()
 
 	privKey, err := rsa.GenerateKey(rand.Reader, bits)
 
@@ -156,8 +161,8 @@ func RotateKey(bits int, ttl time.Duration) (*Keys, error) {
 
 // GetJWKByKid возвращает JWK по kid
 func GetJWKByKid(kid string) (*models.JWK, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 
 	jwk, ok := memJWKS[kid]
 	if !ok {
@@ -203,8 +208,8 @@ func savePublicPEMKey(filename string, pubKey *rsa.PublicKey) error {
 
 // GetLastKeyId возвращает kid последнего ключа
 func GetLastKeyId() string {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 	return fmt.Sprintf("kid-%d", kidCount)
 }
 
@@ -229,6 +234,7 @@ func buildJWK(pub *rsa.PublicKey, ttl time.Duration) *models.JWK {
 
 // saveJWKSToDisk сохраняет memJWKS в JSON
 func saveJWKSToDisk() error {
+	fmt.Println("Saving JWKS to disk")
 	data, err := json.MarshalIndent(memJWKS, "", "  ")
 	if err != nil {
 		return err
@@ -264,13 +270,13 @@ func loadJWKSFromDisk() error {
 }
 
 func GetPrivateKey() rsa.PrivateKey {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 	return *memKeys.PrivateKey
 }
 
 func GetPublicKey() rsa.PublicKey {
-	mu.Lock()
-	defer mu.Unlock()
+	mu.RLock()
+	defer mu.RUnlock()
 	return *memKeys.PublicKey
 }
