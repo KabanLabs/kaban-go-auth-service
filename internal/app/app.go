@@ -60,6 +60,10 @@ func New(
 	grpcApp := grpcapp.New(log, grpcPort, authService)
 	gateway := httpApp.New(ctx, log, httpPort, grpcPort, corsEnabled, refreshTokenTTL)
 
+	if storage == nil {
+		panic("storage not initialized")
+	}
+
 	return &App{
 		GRPCSrv:     grpcApp,
 		DBPool:      storage.Pool,
