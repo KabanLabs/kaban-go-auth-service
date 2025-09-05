@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
@@ -11,6 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -150,13 +152,54 @@ func (s *serverAPI) RegenerateRefreshToken(
 	ctx context.Context,
 	req *ssov1.RegenerateRefreshTokenRequest,
 ) (*ssov1.RegenerateRefreshTokenResponse, error) {
-	isValidJwt := validateJwtString(req.GetRefreshToken())
+	var refreshToken string
+
+	md, ok := metadata.FromIncomingContext(ctx)
+
+	if !ok {
+		if req.GetRefreshToken() != "" {
+			return nil, status.Error(codes.InvalidArgument, "Pass empty refresh token to body")
+		} else {
+			return nil, status.Error(codes.Internal, "Can't parse refresh token")
+		}
+	}
+
+	cookies := md.Get("grpcgateway-cookie")
+
+	for _, cookie := range cookies {
+		paredCookie := strings.Split(cookie, "=")
+		name, value := paredCookie[0], paredCookie[1]
+
+		if name == "Authorization" {
+			header := strings.Split(value, " ")
+
+			cookieType, token := header[0], header[1]
+
+			if cookieType != "Bearer" {
+				return nil, status.Error(codes.InvalidArgument, "Invalid token type")
+			}
+
+			refreshToken = token
+			break
+		}
+
+		if name == "refreshToken" {
+			refreshToken = value
+			break
+		}
+	}
+
+	if refreshToken == "" {
+		return nil, status.Error(codes.InvalidArgument, "Cant find header with refresh token")
+	}
+
+	isValidJwt := validateJwtString(refreshToken)
 
 	if !isValidJwt {
 		return nil, status.Error(codes.InvalidArgument, "Invalid refresh token")
 	}
 
-	accessToken, refreshToken, err := s.auth.RegenerateRefreshToken(ctx, req.GetRefreshToken())
+	accessToken, refreshToken, err := s.auth.RegenerateRefreshToken(ctx, refreshToken)
 
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {

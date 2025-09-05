@@ -21,7 +21,6 @@ func NewAccessToken(user models.User, app models.App, duration time.Duration, pr
 	claims["app_id"] = app.ID
 	claims["kid"] = rsa_store.GetLastKeyId()
 
-	// TODO: pass RSA private key here
 	tokenString, err := token.SignedString(privateKey)
 
 	if err != nil {

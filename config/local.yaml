@@ -9,7 +9,7 @@ grpc:
 
 http:
   port: 8000
-  enable_cors: false
+  enable_cors: true
 
 pg_config:
   port: 5432
