@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"regexp"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/services/auth"
@@ -55,7 +56,6 @@ func (s *serverAPI) Login(
 		return nil, validateError
 	}
 
-	// TODO: implement login via auth service
 	tokens, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 
 	if err != nil {
@@ -97,7 +97,12 @@ func (s *serverAPI) ValidateToken(
 	ctx context.Context,
 	req *ssov1.ValidateTokenRequest,
 ) (*ssov1.ValidateTokenResponse, error) {
-	//TODO: add validator for JWT string
+	isValidJwt := validateJwtString(req.GetAccessToken())
+
+	if !isValidJwt {
+		return nil, status.Error(codes.InvalidArgument, "Invalid token")
+	}
+
 	isValid, err := s.auth.ValidateAccessToken(req.GetAccessToken())
 
 	if err != nil {
@@ -145,7 +150,12 @@ func (s *serverAPI) RegenerateRefreshToken(
 	ctx context.Context,
 	req *ssov1.RegenerateRefreshTokenRequest,
 ) (*ssov1.RegenerateRefreshTokenResponse, error) {
-	//TODO: add validator for JWT string
+	isValidJwt := validateJwtString(req.GetRefreshToken())
+
+	if !isValidJwt {
+		return nil, status.Error(codes.InvalidArgument, "Invalid refresh token")
+	}
+
 	accessToken, refreshToken, err := s.auth.RegenerateRefreshToken(ctx, req.GetRefreshToken())
 
 	if err != nil {
@@ -189,4 +199,10 @@ func validateRegister(req *ssov1.RegisterRequest) error {
 	}
 
 	return nil
+}
+
+func validateJwtString(token string) bool {
+	jwtPattern := `^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$`
+	matched, _ := regexp.MatchString(jwtPattern, token)
+	return matched
 }
