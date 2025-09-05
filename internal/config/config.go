@@ -19,7 +19,8 @@ type Config struct {
 }
 
 type HttpConfig struct {
-	Port int `yaml:"port" env-default:"8080"`
+	Port        int  `yaml:"port" env-default:"8080"`
+	EnabledCors bool `yaml:"enable_cors" env-default:"false"`
 }
 
 type GRPCConfig struct {

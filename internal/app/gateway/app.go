@@ -108,11 +108,30 @@ func cookieMiddleware(next http.Handler, refreshTokenTTL time.Duration) http.Han
 	})
 }
 
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Set the Access-Control-Allow-Origin header to allow requests from any origin
+		// For production, replace "*" with specific origins like "http://example.com"
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight requests (OPTIONS method)
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func New(
 	ctx context.Context,
 	log *slog.Logger,
 	httpPort int,
 	grpcPort int,
+	corsEnabled bool,
 	refreshTokenTTL time.Duration,
 ) *App {
 	mux := runtime.NewServeMux()
@@ -123,11 +142,17 @@ func New(
 		panic(err)
 	}
 
+	var httpHandler http.Handler
+
 	cookieMiddleware := cookieMiddleware(mux, refreshTokenTTL)
+
+	if corsEnabled {
+		httpHandler = enableCORS(cookieMiddleware)
+	}
 
 	return &App{
 		server:  mux,
-		handler: cookieMiddleware,
+		handler: httpHandler,
 		port:    httpPort,
 		log:     log,
 	}

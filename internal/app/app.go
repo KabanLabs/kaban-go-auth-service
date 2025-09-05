@@ -28,6 +28,7 @@ func New(
 	pgConfig config.PostgresConfig,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
+	corsEnabled bool,
 ) *App {
 
 	dbUrl := fmt.Sprintf(
@@ -57,7 +58,7 @@ func New(
 	)
 
 	grpcApp := grpcapp.New(log, grpcPort, authService)
-	gateway := httpApp.New(ctx, log, httpPort, grpcPort, refreshTokenTTL)
+	gateway := httpApp.New(ctx, log, httpPort, grpcPort, corsEnabled, refreshTokenTTL)
 
 	return &App{
 		GRPCSrv:     grpcApp,

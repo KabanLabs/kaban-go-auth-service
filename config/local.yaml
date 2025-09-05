@@ -4,11 +4,12 @@ refresh_token_ttl: 2h
 private_key_ttl: 1440h
 
 grpc:
-  port: 3000
+  port: 5055
   timeout: 10h
 
 http:
   port: 8000
+  enable_cors: false
 
 pg_config:
   port: 5432

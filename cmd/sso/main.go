@@ -67,6 +67,7 @@ func main() {
 		cfg.PgConfig,
 		cfg.AccessTokenTTL,
 		cfg.RefreshTokenTTL,
+		cfg.Http.EnabledCors,
 	)
 
 	go application.GRPCSrv.MustRun()
