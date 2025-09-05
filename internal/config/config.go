@@ -9,18 +9,18 @@ import (
 )
 
 type Config struct {
-	Env             string         `yaml:"env" env-default:"local"`
-	GRPC            GRPCConfig     `yaml:"grpc"`
 	AccessTokenTTL  time.Duration  `yaml:"access_token_ttl"`
 	RefreshTokenTTL time.Duration  `yaml:"refresh_token_ttl"`
 	PrivateKeyTTL   time.Duration  `yaml:"private_key_ttl"`
+	Env             string         `yaml:"env" env-default:"local"`
+	GRPC            GRPCConfig     `yaml:"grpc"`
 	PgConfig        PostgresConfig `yaml:"pg_config"`
 	Http            HttpConfig     `yaml:"http"`
 }
 
 type HttpConfig struct {
-	Port        int  `yaml:"port" env-default:"8080"`
 	EnabledCors bool `yaml:"enable_cors" env-default:"false"`
+	Port        int  `yaml:"port" env-default:"8080"`
 }
 
 type GRPCConfig struct {
@@ -29,8 +29,8 @@ type GRPCConfig struct {
 }
 
 type PostgresConfig struct {
-	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
+	Host     string `yaml:"host"`
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 	DbName   string `yaml:"db_name"`
