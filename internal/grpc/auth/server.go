@@ -28,9 +28,9 @@ type Auth interface {
 	) (userID string, err error)
 	GetJWK(kid string) (key *models.JWK, err error)
 	ValidateAccessToken(accessToken string) (isValid bool, err error)
-	RegenerateRefreshToken(ctx context.Context, refreshToken string) (
-		accessToken,
-		newRefreshToken string,
+	RegenerateAccessToken(ctx context.Context, refreshToken string) (
+		AccessToken,
+		RefreshToken string,
 		err error,
 	)
 }
@@ -199,7 +199,7 @@ func (s *serverAPI) RegenerateRefreshToken(
 		return nil, status.Error(codes.InvalidArgument, "Invalid refresh token")
 	}
 
-	accessToken, refreshToken, err := s.auth.RegenerateRefreshToken(ctx, refreshToken)
+	accessToken, refreshToken, err := s.auth.RegenerateAccessToken(ctx, refreshToken)
 
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {

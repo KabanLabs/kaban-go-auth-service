@@ -155,7 +155,12 @@ func RotateKey(bits int, ttl time.Duration) (*Keys, error) {
 		return nil, err
 	}
 
-	saveJWKSToDisk()
+	err = saveJWKSToDisk()
+
+	if err != nil {
+		return nil, err
+	}
+
 	return keys, nil
 }
 

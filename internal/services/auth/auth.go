@@ -27,6 +27,7 @@ type Auth struct {
 	appProvider          AppProvider
 	refreshTokenSaver    RefreshTokenSaver
 	refreshTokenProvider RefreshTokenProvider
+	refreshTokenRotator  RefreshTokenRotator
 	accessTokenTTL       time.Duration
 	refreshTokenTTL      time.Duration
 }
@@ -49,11 +50,19 @@ type AppProvider interface {
 }
 
 type RefreshTokenSaver interface {
-	SaveRefreshToken(ctx context.Context, refreshToken string, uid string, expiresAt time.Time, appId int) (models.RefreshToken, error)
+	SaveRefreshToken(ctx context.Context, refreshToken string, uid string, expiresAt time.Time, appId int) (*models.RefreshToken, error)
+}
+
+type RefreshTokenRotator interface {
+	RotateRefreshToken(ctx context.Context, refreshToken string) error
 }
 
 type RefreshTokenProvider interface {
 	RefreshToken(ctx context.Context, refreshToken string) (models.RefreshToken, error)
+}
+
+type EventsSaver interface {
+	SaveAuthEvent(ctx context.Context, eventType string, description string) (err error)
 }
 
 // New returns new instance of the Auth Service
@@ -64,6 +73,7 @@ func New(
 	appProvider AppProvider,
 	refreshTokenSaver RefreshTokenSaver,
 	refreshTokenProvider RefreshTokenProvider,
+	refreshTokenRotator RefreshTokenRotator,
 	accessTokenTTL time.Duration,
 	refreshTokenTTL time.Duration,
 ) *Auth {
@@ -76,6 +86,7 @@ func New(
 		refreshTokenSaver:    refreshTokenSaver,
 		accessTokenTTL:       accessTokenTTL,
 		refreshTokenTTL:      refreshTokenTTL,
+		refreshTokenRotator:  refreshTokenRotator,
 	}
 }
 
@@ -223,11 +234,11 @@ func (s *Auth) GetJWK(kid string) (key *models.JWK, err error) {
 	return key, nil
 }
 
-func (s *Auth) RegenerateRefreshToken(
+func (s *Auth) RegenerateAccessToken(
 	ctx context.Context,
 	refreshToken string,
 ) (string, string, error) {
-	const op = "Auth.RegenerateRefreshToken"
+	const op = "Auth.RegenerateAccessToken"
 
 	log := s.log.With(
 		slog.String("op", op),
@@ -249,6 +260,13 @@ func (s *Auth) RegenerateRefreshToken(
 	}
 
 	if time.Now().After(storedRefresh.ExpireAt) {
+		err = s.refreshTokenRotator.RotateRefreshToken(ctx, refreshToken)
+
+		if err != nil {
+			log.Error("failed to rotate refresh token", "error", err)
+			return "", "", fmt.Errorf("%s: %w", op, err)
+		}
+
 		log.Error("refresh token expired")
 		return "", "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
@@ -274,27 +292,7 @@ func (s *Auth) RegenerateRefreshToken(
 		return "", "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	newRefreshToken, err := jwt.NewRefreshToken(user, app, s.refreshTokenTTL, &privateKey)
-
-	if err != nil {
-		log.Error("failed to generate refresh token", "error", err)
-		return "", "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	_, err = s.refreshTokenSaver.SaveRefreshToken(
-		ctx,
-		newRefreshToken,
-		user.ID,
-		time.Now().Add(s.refreshTokenTTL),
-		app.ID,
-	)
-
-	if err != nil {
-		log.Error("failed to save refresh token", "error", err)
-		return "", "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return newAccessToken, newRefreshToken, nil
+	return newAccessToken, refreshToken, nil
 }
 
 type TokenData struct {

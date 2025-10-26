@@ -148,6 +148,8 @@ func New(
 
 	if corsEnabled {
 		httpHandler = enableCORS(cookieMiddleware)
+	} else {
+		httpHandler = cookieMiddleware
 	}
 
 	return &App{

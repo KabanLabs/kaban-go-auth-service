@@ -53,6 +53,7 @@ func New(
 		storage,
 		storage,
 		storage,
+		storage,
 		accessTokenTTL,
 		refreshTokenTTL,
 	)

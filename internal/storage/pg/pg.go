@@ -148,13 +148,13 @@ func (s *Storage) RefreshToken(ctx context.Context, refreshToken string) (models
 	return token, nil
 }
 
-func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid string, expAt time.Time, appId int) (models.RefreshToken, error) {
+func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid string, expAt time.Time, appId int) (*models.RefreshToken, error) {
 	const op = "storage.pg.SaveRefreshToken"
 	var token models.RefreshToken
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return token, fmt.Errorf("%s: begin tx failed: %w", op, err)
+		return nil, fmt.Errorf("%s: begin tx failed: %w", op, err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -171,7 +171,7 @@ func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid
 	`
 	cmdTag, err := tx.Exec(ctx, rotateLastTokenQuery, uid)
 	if err != nil {
-		return token, fmt.Errorf("%s: failed to rotate last token: %w", op, err)
+		return nil, fmt.Errorf("%s: failed to rotate last token: %w", op, err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
@@ -185,17 +185,41 @@ func (s *Storage) SaveRefreshToken(ctx context.Context, refreshToken string, uid
 	`
 	err = tx.QueryRow(ctx, insertQuery, uid, refreshToken, appId, expAt).Scan(&token.ID)
 	if err != nil {
-		return token, fmt.Errorf("%s: failed to insert new token: %w", op, err)
+		return nil, fmt.Errorf("%s: failed to insert new token: %w", op, err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return token, fmt.Errorf("%s: commit failed: %w", op, err)
+		return nil, fmt.Errorf("%s: commit failed: %w", op, err)
 	}
 
 	token.UserID = uid
 	token.Token = refreshToken
 
-	return token, nil
+	return &token, nil
+}
+
+func (s *Storage) RotateRefreshToken(ctx context.Context, refreshToken string) error {
+	const op = "storage.pg.RotateRefreshToken"
+
+	const rotateTokenQuery = "UPDATE users_tokens SET rotated = true WHERE token = $1"
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: begin tx failed: %w", op, err)
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, rotateTokenQuery, refreshToken)
+
+	if err != nil {
+		return fmt.Errorf("%s: exec query failed: %w", op, err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%s: commit failed: %w", op, err)
+	}
+
+	return nil
 }
 
 // IsUniqueViolation check is pgx error is about unique constraint violation
