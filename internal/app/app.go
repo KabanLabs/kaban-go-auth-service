@@ -22,6 +22,7 @@ type App struct {
 
 func New(
 	ctx context.Context,
+	env string,
 	log *slog.Logger,
 	grpcPort int,
 	httpPort int,
@@ -31,14 +32,29 @@ func New(
 	corsEnabled bool,
 ) *App {
 
-	dbUrl := fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s",
-		pgConfig.User,
-		pgConfig.Password,
-		pgConfig.Host,
-		pgConfig.Port,
-		pgConfig.DbName,
-	)
+	var dbUrl string
+
+	if env == "prod" {
+		dbUrl = fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s?sslmode=%s&sslrootcert=%s",
+			pgConfig.User,
+			pgConfig.Password,
+			pgConfig.Host,
+			pgConfig.Port,
+			pgConfig.DbName,
+			pgConfig.SSLMode,
+			pgConfig.SSLRootCertPath,
+		)
+	} else {
+		dbUrl = fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s?sslmode=disable",
+			pgConfig.User,
+			pgConfig.Password,
+			pgConfig.Host,
+			pgConfig.Port,
+			pgConfig.DbName,
+		)
+	}
 
 	storage, err := pg.New(context.Background(), dbUrl)
 

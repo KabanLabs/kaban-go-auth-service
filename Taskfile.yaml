@@ -4,14 +4,29 @@ tasks:
   start:dev:
     desc: "Run local dev version"
     cmds:
-      - go run ./cmd/sso --config=./config/local.yaml
+      - go run ./cmd/sso --config=./config/local.
+
+  start:prod:
+    desc: "Run production config"
+    cmds:
+      - go run ./cmd/sso --config=./config/prod.yaml
 
   migrate-up:
     desc: "Up migrations"
     cmds:
-      - go run ./cmd/migrator --migrations-path=./migrations --type=up
+      - CONFIG_PATH=./config/local.yaml go run ./cmd/migrator --migrations-path=./migrations --type=up
 
   migrate-down:
     desc: "Down migrations"
     cmds:
-      - go run ./cmd/migrator --migrations-path=./migrations --type=down
+      - CONFIG_PATH=./config/local.yaml go run ./cmd/migrator --migrations-path=./migrations --type=down
+
+  migrate-up:prod:
+    desc: "Up migrations"
+    cmds:
+      - CONFIG_PATH=./config/prod.yaml go run ./cmd/migrator --migrations-path=./migrations --type=up
+
+  migrate-down:prod:
+    desc: "Down migrations"
+    cmds:
+      - CONFIG_PATH=./config/prod.yaml go run ./cmd/migrator --migrations-path=./migrations --type=down

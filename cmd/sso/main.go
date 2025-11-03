@@ -61,6 +61,7 @@ func main() {
 
 	application := app.New(
 		ctx,
+		cfg.Env,
 		log,
 		cfg.GRPC.Port,
 		cfg.Http.Port,

@@ -29,12 +29,13 @@ type GRPCConfig struct {
 }
 
 type PostgresConfig struct {
-	Port     int    `yaml:"port"`
-	Host     string `yaml:"host"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	DbName   string `yaml:"db_name"`
-	SSLMode  string `yaml:"ssl_mode"`
+	Port            int    `yaml:"port"`
+	Host            string `yaml:"host"`
+	User            string `yaml:"user"`
+	Password        string `yaml:"password"`
+	DbName          string `yaml:"db_name"`
+	SSLMode         string `yaml:"ssl_mode"`
+	SSLRootCertPath string `yaml:"ssl_root_cert_path"`
 }
 
 func MustLoad() *Config {
