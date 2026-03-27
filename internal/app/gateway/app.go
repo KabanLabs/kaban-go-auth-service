@@ -111,11 +111,14 @@ func cookieMiddleware(next http.Handler, refreshTokenTTL time.Duration) http.Han
 
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set the Access-Control-Allow-Origin header to allow requests from any origin
-		// For production, replace "*" with specific origins like "http://example.com"
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Handle preflight requests (OPTIONS method)
 		if r.Method == "OPTIONS" {
