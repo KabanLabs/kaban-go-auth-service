@@ -11,6 +11,7 @@ import (
 
 	ssov1 "github.com/VACdotCS/protos/gen/go/sso"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -168,7 +169,11 @@ func (app *App) Run() {
 
 	logger.Info("Http gateway is running")
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", app.port), app.handler); err != nil {
+	mux := http.NewServeMux()
+	mux.Handle("/", app.handler)
+	mux.Handle("/metrics", promhttp.Handler())
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", app.port), mux); err != nil {
 		panic(err)
 	}
 }
