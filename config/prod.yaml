@@ -1,4 +1,4 @@
-env: "local" # dev
+env: "prod"
 access_token_ttl: 100000s
 refresh_token_ttl: 2h
 private_key_ttl: 1440h
@@ -12,8 +12,10 @@ http:
   enable_cors: true
 
 pg_config:
-  port: 5432
-  user: postgres
+  port: 6432
+  user: user1
   password: Strong!Pass123
-  host: 127.0.0.1
+  host: rc1a-09e7h4bifqv0p6at.mdb.yandexcloud.net
   db_name: sso
+  ssl_mode: verify-ca
+  ssl_root_cert_path: /home/vladimir/.postgresql/root.crt

@@ -4,7 +4,7 @@ tasks:
   start:dev:
     desc: "Run local dev version"
     cmds:
-      - go run ./cmd/sso --config=./config/local.
+      - go run ./cmd/sso --config=./config/local.yaml
 
   start:prod:
     desc: "Run production config"
