@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"net/mail"
 	"regexp"
 	"strings"
 
@@ -220,6 +221,9 @@ func validateLogin(req *ssov1.LoginRequest) error {
 	if req.GetEmail() == "" {
 		return status.Error(codes.InvalidArgument, "email is required")
 	}
+	if _, err := mail.ParseAddress(req.GetEmail()); err != nil {
+		return status.Error(codes.InvalidArgument, "invalid email format")
+	}
 
 	if req.GetPassword() == "" {
 		return status.Error(codes.InvalidArgument, "password is required")
@@ -237,8 +241,18 @@ func validateRegister(req *ssov1.RegisterRequest) error {
 		return status.Error(codes.InvalidArgument, "email is required")
 	}
 
-	if req.GetPassword() == "" {
+	if _, err := mail.ParseAddress(req.GetEmail()); err != nil {
+		return status.Error(codes.InvalidArgument, "invalid email format")
+	}
+
+	pass := req.GetPassword()
+
+	if pass == "" {
 		return status.Error(codes.InvalidArgument, "password is required")
+	}
+
+	if len(pass) < 8 {
+		return status.Error(codes.InvalidArgument, "password must be at least 8 characters long")
 	}
 
 	return nil

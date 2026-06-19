@@ -8,11 +8,19 @@ import (
 	"time"
 
 	"github.com/VACdotCS/kaban-go-auth-service/internal/domain/models"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/lib/hash"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/lib/jwt"
 	rsa_store "github.com/VACdotCS/kaban-go-auth-service/internal/lib/rsa-store"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var dummyHash string
+
+func init() {
+	// Предварительно генерируем холостой хеш для защиты от timing-атак (Argon2id)
+	dummyHash, _ = hash.GenerateFromPassword("dummy", nil)
+}
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
@@ -108,6 +116,8 @@ func (s *Auth) Login(ctx context.Context,
 
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
+			// Выполняем холостое сравнение, чтобы уровнять время ответа (защита от Timing-атак)
+			_, _ = hash.CompareHashAndPassword(dummyHash, password)
 			return TokenData{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
 
@@ -116,9 +126,23 @@ func (s *Auth) Login(ctx context.Context,
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword(user.PassHash, []byte(password)); err != nil {
-		log.Info("invalid credentials", "error", err)
+	isPasswordValid := false
 
+	// Поддержка обратной совместимости с bcrypt (на случай старых пользователей)
+	if len(user.PassHash) > 4 && string(user.PassHash[:4]) == "$2a$" {
+		if err := bcrypt.CompareHashAndPassword(user.PassHash, []byte(password)); err == nil {
+			isPasswordValid = true
+		}
+	} else {
+		// По умолчанию используем Argon2id
+		match, err := hash.CompareHashAndPassword(string(user.PassHash), password)
+		if err == nil && match {
+			isPasswordValid = true
+		}
+	}
+
+	if !isPasswordValid {
+		log.Info("invalid credentials")
 		return TokenData{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
@@ -173,15 +197,15 @@ func (s *Auth) RegisterNewUser(ctx context.Context,
 
 	log.Info("attempting to register user")
 
-	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	passHashStr, err := hash.GenerateFromPassword(password, nil)
 
 	if err != nil {
-		log.Error("failed to generate password", err)
+		log.Error("failed to generate password hash", err)
 
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	userID, err := s.userSaver.SaveUser(ctx, email, passHash)
+	userID, err := s.userSaver.SaveUser(ctx, email, []byte(passHashStr))
 
 	if err != nil {
 		log.Error("failed to save user", err)
