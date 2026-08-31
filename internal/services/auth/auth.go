@@ -11,6 +11,7 @@ import (
 	"github.com/VACdotCS/kaban-go-auth-service/internal/lib/hash"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/lib/jwt"
 	rsa_store "github.com/VACdotCS/kaban-go-auth-service/internal/lib/rsa-store"
+	"github.com/VACdotCS/kaban-go-auth-service/internal/metrics"
 	"github.com/VACdotCS/kaban-go-auth-service/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -142,6 +143,7 @@ func (s *Auth) Login(ctx context.Context,
 	}
 
 	if !isPasswordValid {
+		metrics.LoginAttempts.WithLabelValues("error_credentials").Inc()
 		log.Info("invalid credentials")
 		return TokenData{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
@@ -174,10 +176,12 @@ func (s *Auth) Login(ctx context.Context,
 	_, err = s.refreshTokenSaver.SaveRefreshToken(ctx, refreshToken, user.ID, time.Now().Add(s.refreshTokenTTL), appID)
 
 	if err != nil {
+		metrics.LoginAttempts.WithLabelValues("error_internal").Inc()
 		log.Error("failed to save refresh token", "error", err)
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	metrics.LoginAttempts.WithLabelValues("success").Inc()
 	return TokenData{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -211,12 +215,15 @@ func (s *Auth) RegisterNewUser(ctx context.Context,
 		log.Error("failed to save user", "error", err)
 
 		if errors.Is(err, storage.ErrUserExists) {
+			metrics.RegisterAttempts.WithLabelValues("error_exists").Inc()
 			return "", fmt.Errorf("%s: %w", op, ErrEmailAlreadyExists)
 		}
 
+		metrics.RegisterAttempts.WithLabelValues("error_internal").Inc()
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
+	metrics.RegisterAttempts.WithLabelValues("success").Inc()
 	return userID, nil
 }
 
@@ -232,10 +239,12 @@ func (s *Auth) ValidateAccessToken(accessToken string) (isValid bool, err error)
 	valid, err := jwt.CheckToken(accessToken)
 
 	if err != nil {
+		metrics.TokenValidations.WithLabelValues("invalid").Inc()
 		log.Error("failed to validate access token", "error", err)
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
+	metrics.TokenValidations.WithLabelValues("valid").Inc()
 	return valid, nil
 }
 
@@ -312,10 +321,12 @@ func (s *Auth) RegenerateAccessToken(
 	newAccessToken, err := jwt.NewAccessToken(user, app, s.accessTokenTTL, &privateKey)
 
 	if err != nil {
+		metrics.TokenRotations.WithLabelValues("error_internal").Inc()
 		log.Error("failed to generate access token", "error", err)
 		return "", "", fmt.Errorf("%s: %w", op, err)
 	}
 
+	metrics.TokenRotations.WithLabelValues("success").Inc()
 	return newAccessToken, refreshToken, nil
 }
 
