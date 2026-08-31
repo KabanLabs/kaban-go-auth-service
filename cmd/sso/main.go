@@ -84,10 +84,10 @@ func main() {
 
 	log.Info("stopping application", slog.String("signal", sign.String()))
 
-	application.GRPCSrv.Stop()
-	
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
+
+	application.GRPCSrv.Stop(shutdownCtx)
 	
 	if err := application.HttpGateway.Stop(shutdownCtx); err != nil {
 		log.Error("HTTP Gateway shutdown failed", "error", err)
