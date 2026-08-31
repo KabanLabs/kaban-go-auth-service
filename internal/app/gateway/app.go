@@ -21,6 +21,7 @@ type App struct {
 	handler http.Handler
 	port    int
 	log     *slog.Logger
+	httpSrv *http.Server
 }
 
 type responseWriterWrapper struct {
@@ -176,7 +177,20 @@ func (app *App) Run() {
 	mux.Handle("/", app.handler)
 	mux.Handle("/metrics", promhttp.Handler())
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", app.port), mux); err != nil {
+	app.httpSrv = &http.Server{
+		Addr:    fmt.Sprintf(":%d", app.port),
+		Handler: mux,
+	}
+
+	if err := app.httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}
+}
+
+func (app *App) Stop(ctx context.Context) error {
+	if app.httpSrv != nil {
+		app.log.Info("Stopping HTTP gateway")
+		return app.httpSrv.Shutdown(ctx)
+	}
+	return nil
 }
