@@ -88,11 +88,11 @@ func main() {
 	defer shutdownCancel()
 
 	application.GRPCSrv.Stop(shutdownCtx)
-	
+
 	if err := application.HttpGateway.Stop(shutdownCtx); err != nil {
 		log.Error("HTTP Gateway shutdown failed", "error", err)
 	}
-	
+
 	application.DBPool.Close()
 
 	log.Info("application stopped")

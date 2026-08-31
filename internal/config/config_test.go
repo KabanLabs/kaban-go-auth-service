@@ -32,7 +32,6 @@ pg_config:
 	os.Setenv("CONFIG_PATH", tempFile.Name())
 	defer os.Unsetenv("CONFIG_PATH")
 
-	// Avoid command-line arguments interfering with the flag parsing
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 	os.Args = []string{"cmd"}

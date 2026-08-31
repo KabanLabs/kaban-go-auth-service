@@ -31,19 +31,16 @@ func (m *mockAuth) RegenerateAccessToken(ctx context.Context, refreshToken strin
 func TestGRPCApp_GracefulShutdown(t *testing.T) {
 	log := slog.Default()
 
-	// Create app on a random port (port 0 lets the OS pick)
 	app := New(log, 0, &mockAuth{})
 
 	go func() {
 		_ = app.Run()
 	}()
 
-	// Wait for server to initialize
 	time.Sleep(100 * time.Millisecond)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	// The stop should finish instantly and not block forever
 	app.Stop(ctx)
 }

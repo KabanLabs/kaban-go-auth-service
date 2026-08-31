@@ -16,7 +16,6 @@ func TestGenerateAndCompareHash(t *testing.T) {
 		t.Fatal("expected hash string to not be empty")
 	}
 
-	// Test valid password
 	match, err := CompareHashAndPassword(hashStr, password)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -25,7 +24,6 @@ func TestGenerateAndCompareHash(t *testing.T) {
 		t.Error("expected passwords to match")
 	}
 
-	// Test invalid password
 	match, err = CompareHashAndPassword(hashStr, "wrong_password")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
