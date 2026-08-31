@@ -158,7 +158,7 @@ func (s *Auth) Login(ctx context.Context,
 	accessToken, err := jwt.NewAccessToken(user, app, s.accessTokenTTL, &privateKey)
 
 	if err != nil {
-		log.Error("failed to generate access token", err)
+		log.Error("failed to generate access token", "error", err)
 
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -166,7 +166,7 @@ func (s *Auth) Login(ctx context.Context,
 	refreshToken, err := jwt.NewRefreshToken(user, app, s.refreshTokenTTL, &privateKey)
 
 	if err != nil {
-		log.Error("failed to generate refresh token", err)
+		log.Error("failed to generate refresh token", "error", err)
 
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
@@ -174,7 +174,7 @@ func (s *Auth) Login(ctx context.Context,
 	_, err = s.refreshTokenSaver.SaveRefreshToken(ctx, refreshToken, user.ID, time.Now().Add(s.refreshTokenTTL), appID)
 
 	if err != nil {
-		log.Error("failed to save refresh token", err)
+		log.Error("failed to save refresh token", "error", err)
 		return TokenData{}, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -200,7 +200,7 @@ func (s *Auth) RegisterNewUser(ctx context.Context,
 	passHashStr, err := hash.GenerateFromPassword(password, nil)
 
 	if err != nil {
-		log.Error("failed to generate password hash", err)
+		log.Error("failed to generate password hash", "error", err)
 
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -208,7 +208,7 @@ func (s *Auth) RegisterNewUser(ctx context.Context,
 	userID, err := s.userSaver.SaveUser(ctx, email, []byte(passHashStr))
 
 	if err != nil {
-		log.Error("failed to save user", err)
+		log.Error("failed to save user", "error", err)
 
 		if errors.Is(err, storage.ErrUserExists) {
 			return "", fmt.Errorf("%s: %w", op, ErrEmailAlreadyExists)
@@ -232,7 +232,7 @@ func (s *Auth) ValidateAccessToken(accessToken string) (isValid bool, err error)
 	valid, err := jwt.CheckToken(accessToken)
 
 	if err != nil {
-		log.Error("failed to validate access token", err)
+		log.Error("failed to validate access token", "error", err)
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -251,7 +251,7 @@ func (s *Auth) GetJWK(kid string) (key *models.JWK, err error) {
 	key, err = rsa_store.GetJWKByKid(kid)
 
 	if err != nil {
-		log.Error("failed to get jwk", ErrPublicKeyNotFound)
+		log.Error("failed to get jwk", "error", ErrPublicKeyNotFound)
 		return nil, fmt.Errorf("%s: %w", op, ErrPublicKeyNotFound)
 	}
 
